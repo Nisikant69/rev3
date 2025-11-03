@@ -137,12 +137,15 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
                 for comment_text in ai_comments:
                     comment_pos = map_comment_to_position(comment_text, hunks, filename)
                     if comment_pos:
-                        all_comments.append({
+                        comment_data = {
                             "path": comment_pos.path,
                             "body": comment_pos.body,
-                            "position": comment_pos.position,
-                            "line": comment_pos.line
-                        })
+                            "position": comment_pos.position
+                        }
+                        # Only include line if it's a valid number
+                        if comment_pos.line is not None:
+                            comment_data["line"] = comment_pos.line
+                        all_comments.append(comment_data)
         except Exception as e:
             print(f"Error reviewing chunk {i+1} for {filename}: {e}")
             continue
