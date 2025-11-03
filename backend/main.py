@@ -46,7 +46,7 @@ async def github_webhook(request: Request):
                 repo_dir = save_repo_snapshot(repo, head_sha)
                 index, metadata = index_repo(repo_dir, repo_name, head_sha)
 
-                files = pr.get_files()
+                files = list(pr.get_files())
                 all_review_comments = []
                 action_flag = "COMMENT"
                 summary_blocks = []
