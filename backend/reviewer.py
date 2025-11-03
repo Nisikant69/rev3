@@ -1,11 +1,15 @@
 # backend/reviewer.py
 import json
 import google.generativeai as genai
-from backend.utils import trim_diff, extract_symbols_from_patch, detect_language_from_filename
+from backend.utils import (
+    trim_diff, extract_symbols_from_patch, detect_language_from_filename,
+    parse_diff_hunks, map_comment_to_position, format_ai_comments,
+    enhance_trim_diff, estimate_tokens, should_chunk_file, chunk_code_by_functions
+)
 from backend.semantic_search import semantic_search
-from backend.config import GEMINI_API_KEY, TOP_K
+from backend.config import GEMINI_API_KEY, TOP_K, MAX_TOKENS_PER_REQUEST
 import faiss
-from typing import List
+from typing import List, Dict, Any
 import time
 from google.api_core.exceptions import ResourceExhausted
 
