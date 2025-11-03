@@ -64,7 +64,6 @@ def parse_diff_hunks(patch: str):
     Returns:
         List of DiffHunk objects
     """
-    from backend.diff_parser import parse_diff_hunks as diff_parser_parse_hunks
     return diff_parser_parse_hunks(patch)
 
 
