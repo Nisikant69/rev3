@@ -4,7 +4,7 @@ import hmac, hashlib, os, json, traceback
 from github import Github, GithubException
 import requests
 
-from backend.reviewer import review_patch
+from backend.reviewer import review_patch_line_level
 from backend.auth import get_installation_token
 from backend.repo_fetcher import save_repo_snapshot
 from backend.context_indexer import index_repo
