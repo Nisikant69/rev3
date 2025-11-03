@@ -22,33 +22,284 @@ def _get_model():
         _model = SentenceTransformer(MODEL_NAME)
     return _model
 
-def chunk_text(path, max_chunk_size=2000):
+def chunk_text(path, max_chunk_size=2000, use_function_boundaries=True):
     """
-    Reads a file line by line and splits into manageable text chunks.
+    Enhanced text chunking that respects function/class boundaries when possible.
+
+    Args:
+        path: File path to read
+        max_chunk_size: Maximum chunk size in characters
+        use_function_boundaries: Whether to try chunking by function boundaries
+
+    Returns:
+        List of text chunks with metadata
+    """
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as e:
+        print(f"⚠️ Skipping file {path} due to error: {e}")
+        return []
+
+    # Try function-based chunking first
+    if use_function_boundaries:
+        language = detect_language_from_filename(path)
+        if language != "Unknown":
+            try:
+                return chunk_code_by_functions(content, language, max_chunk_size, path)
+            except Exception:
+                # Fall back to simple chunking if function-based fails
+                pass
+
+    # Simple line-based chunking as fallback
+    return chunk_text_by_lines(content, max_chunk_size, path)
+
+
+def chunk_code_by_functions(content: str, language: str, max_chunk_size: int, file_path: str) -> List[Dict[str, Any]]:
+    """
+    Chunk code by function/class boundaries with enhanced metadata.
     """
     chunks = []
+    boundaries = get_function_boundaries(content, language)
+
+    if not boundaries:
+        return chunk_text_by_lines(content, max_chunk_size, file_path)
+
+    # Sort boundaries and create chunks
+    boundaries.sort(key=lambda x: x['start_line'])
+    lines = content.split('\n')
+
+    for boundary in boundaries:
+        start_idx = boundary['start_line'] - 1
+        end_idx = min(boundary['end_line'], len(lines))
+
+        if start_idx >= len(lines):
+            continue
+
+        function_lines = lines[start_idx:end_idx]
+        function_content = '\n'.join(function_lines)
+
+        # If function is too large, split it further
+        if len(function_content) > max_chunk_size:
+            sub_chunks = chunk_text_by_lines(function_content, max_chunk_size, file_path)
+            for sub_chunk in sub_chunks:
+                chunks.append({
+                    "content": sub_chunk["content"],
+                    "file": sub_chunk["file"],
+                    "type": "function_subchunk",
+                    "function_name": boundary['name'],
+                    "function_type": boundary['type'],
+                    "start_line": boundary['start_line'],
+                    "end_line": boundary['end_line'],
+                    "language": language
+                })
+        else:
+            chunks.append({
+                "content": function_content,
+                "file": file_path,
+                "type": boundary['type'],
+                "function_name": boundary['name'],
+                "function_type": boundary['type'],
+                "start_line": boundary['start_line'],
+                "end_line": boundary['end_line'],
+                "language": language
+            })
+
+    # Handle code outside of functions (imports, global variables, etc.)
+    all_function_lines = set()
+    for boundary in boundaries:
+        all_function_lines.update(range(boundary['start_line'] - 1, boundary['end_line']))
+
+    other_lines = []
+    for i, line in enumerate(lines):
+        if i not in all_function_lines:
+            other_lines.append(line)
+
+    if other_lines:
+        other_content = '\n'.join(other_lines)
+        if len(other_content) > max_chunk_size:
+            sub_chunks = chunk_text_by_lines(other_content, max_chunk_size, file_path)
+            chunks.extend(sub_chunks)
+        else:
+            chunks.append({
+                "content": other_content,
+                "file": file_path,
+                "type": "global",
+                "language": language
+            })
+
+    return chunks
+
+
+def chunk_text_by_lines(content: str, max_chunk_size: int, file_path: str) -> List[Dict[str, Any]]:
+    """
+    Simple line-based text chunking with basic metadata.
+    """
+    chunks = []
+    lines = content.split('\n')
     current_chunk = []
     current_length = 0
 
-    try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                # Add a small buffer to prevent overshooting the max_chunk_size
-                if current_length + len(line) > max_chunk_size and current_chunk:
-                    chunks.append("".join(current_chunk))
-                    current_chunk = [line]
-                    current_length = len(line)
-                else:
-                    current_chunk.append(line)
-                    current_length += len(line)
+    for line in lines:
+        if current_length + len(line) + 1 > max_chunk_size and current_chunk:
+            chunk_content = '\n'.join(current_chunk)
+            chunks.append({
+                "content": chunk_content,
+                "file": file_path,
+                "type": "text_chunk"
+            })
+            current_chunk = [line]
+            current_length = len(line)
+        else:
+            current_chunk.append(line)
+            current_length += len(line) + 1  # +1 for newline
 
-            if current_chunk:  # flush last chunk
-                chunks.append("".join(current_chunk))
-
-    except Exception as e:
-        print(f"⚠️ Skipping file {path} due to error: {e}")
+    if current_chunk:
+        chunk_content = '\n'.join(current_chunk)
+        chunks.append({
+            "content": chunk_content,
+            "file": file_path,
+            "type": "text_chunk"
+        })
 
     return chunks
+
+
+def extract_dependencies(repo_dir: str) -> Dict[str, List[str]]:
+    """
+    Extract dependency relationships between files (imports, function calls, etc.).
+    """
+    dependencies = {}
+
+    for root, _, files in os.walk(repo_dir):
+        for file in files:
+            if not file.endswith(('.py', '.js', '.ts', '.java')):
+                continue
+
+            file_path = os.path.join(root, file)
+            relative_path = os.path.relpath(file_path, repo_dir)
+
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+
+                file_deps = extract_file_dependencies(content, file)
+                dependencies[relative_path] = file_deps
+
+            except Exception as e:
+                print(f"⚠️ Could not extract dependencies from {relative_path}: {e}")
+
+    return dependencies
+
+
+def extract_file_dependencies(content: str, file_path: str) -> List[str]:
+    """
+    Extract dependencies from a single file.
+    """
+    deps = []
+
+    if file_path.endswith('.py'):
+        # Python imports
+        import_patterns = [
+            r'from\s+([^\s]+)\s+import',
+            r'import\s+([^\s]+)',
+            r'from\s+\.([^\s]+)\s+import'  # Relative imports
+        ]
+
+        for pattern in import_patterns:
+            matches = re.findall(pattern, content)
+            deps.extend(matches)
+
+    elif file_path.endswith(('.js', '.ts')):
+        # JavaScript/TypeScript imports
+        import_patterns = [
+            r'import\s+.*?\s+from\s+[\'"]([^\'"]+)[\'"]',
+            r'require\([\'"]([^\'"]+)[\'"]\)',
+            r'import\s+[\'"]([^\'"]+)[\'"]'
+        ]
+
+        for pattern in import_patterns:
+            matches = re.findall(pattern, content)
+            deps.extend(matches)
+
+    elif file_path.endswith('.java'):
+        # Java imports
+        import_pattern = r'import\s+([^\s;]+);'
+        matches = re.findall(import_pattern, content)
+        deps.extend(matches)
+
+    return list(set(deps))  # Remove duplicates
+
+
+def build_dependency_graph(dependencies: Dict[str, List[str]]) -> nx.DiGraph:
+    """
+    Build a NetworkX dependency graph from file dependencies.
+    """
+    G = nx.DiGraph()
+
+    # Add nodes
+    for file_path in dependencies.keys():
+        G.add_node(file_path)
+
+    # Add edges (dependencies)
+    for file_path, deps in dependencies.items():
+        for dep in deps:
+            # Try to find the actual file that corresponds to this dependency
+            dep_file = find_dependency_file(dep, dependencies.keys())
+            if dep_file and dep_file != file_path:
+                G.add_edge(file_path, dep_file)
+
+    return G
+
+
+def find_dependency_file(dep: str, all_files: List[str]) -> Optional[str]:
+    """
+    Find the actual file that corresponds to a dependency string.
+    """
+    # Direct match
+    if dep in all_files:
+        return dep
+
+    # Try common patterns
+    for file_path in all_files:
+        if dep.replace('.', '/') in file_path or dep.replace('\\', '/') in file_path:
+            return file_path
+
+        # Check filename matches
+        if file_path.endswith(f"/{dep}.py") or file_path.endswith(f"/{dep}.js") or file_path.endswith(f"/{dep}.ts"):
+            return file_path
+
+    return None
+
+
+def get_related_files(file_path: str, dependency_graph: nx.DiGraph, max_depth: int = 2) -> List[str]:
+    """
+    Get files related to the given file through dependency relationships.
+    """
+    related = set()
+
+    try:
+        # Files that this file depends on
+        related.update(dependency_graph.successors(file_path))
+
+        # Files that depend on this file
+        related.update(dependency_graph.predecessors(file_path))
+
+        # Go deeper if requested
+        if max_depth > 1:
+            current_related = related.copy()
+            for _ in range(max_depth - 1):
+                next_related = set()
+                for related_file in current_related:
+                    next_related.update(dependency_graph.successors(related_file))
+                    next_related.update(dependency_graph.predecessors(related_file))
+                related.update(next_related)
+                current_related = next_related
+
+    except Exception as e:
+        print(f"⚠️ Error getting related files for {file_path}: {e}")
+
+    return list(related)
 
 def index_repo(repo_dir: str, repo_name: str, commit_sha: str) -> Tuple[faiss.Index, List[dict]]:
     """
