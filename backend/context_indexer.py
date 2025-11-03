@@ -303,13 +303,14 @@ def get_related_files(file_path: str, dependency_graph: nx.DiGraph, max_depth: i
 
 def index_repo(repo_dir: str, repo_name: str, commit_sha: str) -> Tuple[faiss.Index, List[dict]]:
     """
-    Walks through the repo, processes files, chunks them, and builds a FAISS index.
+    Enhanced repository indexing with function-level chunking and dependency analysis.
     Returns the index and the metadata for each chunk.
     """
     # Check if a pre-existing index exists for this commit
     index_path = INDEX_DIR / f"{repo_name.replace('/', '__')}_{commit_sha}.faiss"
     metadata_path = INDEX_DIR / f"{repo_name.replace('/', '__')}_{commit_sha}_meta.json"
-    
+    dependency_path = INDEX_DIR / f"{repo_name.replace('/', '__')}_{commit_sha}_deps.json"
+
     if index_path.exists() and metadata_path.exists():
         print(f"✅ Loading existing index for {repo_name}@{commit_sha}")
         index = faiss.read_index(str(index_path))
@@ -317,35 +318,71 @@ def index_repo(repo_dir: str, repo_name: str, commit_sha: str) -> Tuple[faiss.In
             metadata = json.load(f)
         return index, metadata
 
-    print(f"⏳ Building new index for {repo_name}@{commit_sha}")
+    print(f"⏳ Building enhanced index for {repo_name}@{commit_sha}")
     all_chunks = []
     metadatas = []
 
+    # Extract dependencies first
+    print("🔍 Analyzing file dependencies...")
+    dependencies = extract_dependencies(repo_dir)
+    dependency_graph = build_dependency_graph(dependencies)
+
+    # Save dependency graph
+    with open(dependency_path, "w") as f:
+        # Convert NetworkX graph to serializable format
+        serializable_deps = {
+            "nodes": list(dependency_graph.nodes()),
+            "edges": list(dependency_graph.edges()),
+            "dependencies": dependencies
+        }
+        json.dump(serializable_deps, f)
+
+    # Process files with enhanced chunking
     for root, _, files in os.walk(repo_dir):
         for file in files:
             file_path = os.path.join(root, file)
-            # Make the file path relative to the repo root for clean metadata
             relative_path = os.path.relpath(file_path, repo_dir)
-            
+
             # Skip binary or large non-text files
-            if file.endswith((".png", ".jpg", ".jpeg", ".gif", ".exe", ".dll", ".zip")):
+            if file.endswith((".png", ".jpg", ".jpeg", ".gif", ".exe", ".dll", ".zip", ".pdf")):
                 continue
 
-            file_chunks = chunk_text(file_path)
+            # Get related files for enhanced context
+            related_files = get_related_files(relative_path, dependency_graph)
 
-            for chunk in file_chunks:
-                metadatas.append({
+            # Enhanced chunking
+            file_chunks = chunk_text(file_path, use_function_boundaries=True)
+
+            for chunk_data in file_chunks:
+                chunk_content = chunk_data["content"]
+
+                # Enhanced metadata
+                metadata = {
                     "repo": repo_name,
                     "commit": commit_sha,
                     "file": relative_path,
-                    "content": chunk
-                })
-                all_chunks.append(chunk)
+                    "content": chunk_content,
+                    "type": chunk_data.get("type", "text_chunk"),
+                    "language": chunk_data.get("language", detect_language_from_filename(relative_path)),
+                    "dependencies": dependencies.get(relative_path, []),
+                    "related_files": related_files
+                }
+
+                # Add function-specific metadata
+                if "function_name" in chunk_data:
+                    metadata["function_name"] = chunk_data["function_name"]
+                    metadata["function_type"] = chunk_data["function_type"]
+                    metadata["start_line"] = chunk_data["start_line"]
+                    metadata["end_line"] = chunk_data["end_line"]
+
+                metadatas.append(metadata)
+                all_chunks.append(chunk_content)
 
     if not all_chunks:
         return None, []
 
     # Create embeddings
+    print("🧠 Creating embeddings...")
     model = _get_model()
     embeddings = model.encode(all_chunks).astype("float32")
 
@@ -359,4 +396,28 @@ def index_repo(repo_dir: str, repo_name: str, commit_sha: str) -> Tuple[faiss.In
     with open(metadata_path, "w") as f:
         json.dump(metadatas, f)
 
+    print(f"✅ Indexed {len(all_chunks)} chunks from {len(set(m['file'] for m in metadatas))} files")
     return index, metadatas
+
+
+def load_dependency_graph(repo_name: str, commit_sha: str) -> Optional[nx.DiGraph]:
+    """
+    Load the dependency graph for a repository if it exists.
+    """
+    dependency_path = INDEX_DIR / f"{repo_name.replace('/', '__')}_{commit_sha}_deps.json"
+
+    if not dependency_path.exists():
+        return None
+
+    try:
+        with open(dependency_path, "r") as f:
+            data = json.load(f)
+
+        G = nx.DiGraph()
+        G.add_nodes_from(data["nodes"])
+        G.add_edges_from(data["edges"])
+
+        return G
+    except Exception as e:
+        print(f"⚠️ Could not load dependency graph: {e}")
+        return None
