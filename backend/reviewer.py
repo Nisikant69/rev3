@@ -244,7 +244,7 @@ def generate_review_summary(comments: List[Dict[str, Any]], filename: str, langu
 
     for issue_type, count in issue_types.items():
         if count > 0:
-            summary_parts.append(f"  • {count.replace('_', ' ').title()}: {count}")
+            summary_parts.append(f"  • {issue_type.replace('_', ' ').title()}: {count}")
 
     return "\n".join(summary_parts)
 
