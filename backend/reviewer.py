@@ -88,12 +88,15 @@ def review_single_patch(patch: str, filename: str, language: str, symbols: List[
             for comment_text in ai_comments:
                 comment_pos = map_comment_to_position(comment_text, hunks, filename)
                 if comment_pos:
-                    mapped_comments.append({
+                    comment_data = {
                         "path": comment_pos.path,
                         "body": comment_pos.body,
-                        "position": comment_pos.position,
-                        "line": comment_pos.line
-                    })
+                        "position": comment_pos.position
+                    }
+                    # Only include line if it's a valid number
+                    if comment_pos.line is not None:
+                        comment_data["line"] = comment_pos.line
+                    mapped_comments.append(comment_data)
 
             return mapped_comments
     except Exception as e:
