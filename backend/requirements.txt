@@ -5,3 +5,7 @@ requests
 python-dotenv
 PyGithub
 google-generativeai
+sentence-transformers
+faiss-cpu
+tiktoken
+networkx
