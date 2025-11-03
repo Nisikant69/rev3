@@ -56,8 +56,9 @@ async def github_webhook(request: Request):
                         continue
                     if len(file.patch) > MAX_DIFF_SIZE:
                         continue
-                    
-                    review_json = review_patch(
+
+                    # Use the new line-level review system
+                    review_result = review_patch_line_level(
                         file.patch,
                         file.filename,
                         repo_name,
@@ -67,21 +68,40 @@ async def github_webhook(request: Request):
                         metadata
                     )
 
-                    if review_json and "review" in review_json:
-                        summary_blocks.append(f"### Review for `{review_json['file']}`\n\n{review_json['review']}")
-                        all_review_comments.append({
-                            "path": file.filename,
-                            "body": review_json['review'],
-                            "position": 1, # Using position=1 as a fallback for the first line of the patch
-                        })
-                        # Add logic to determine a more precise line number if needed
-                        # The current logic doesn't support line-specific comments, so this is a placeholder
+                    if review_result and review_result.get("comments"):
+                        # Add line-specific comments
+                        all_review_comments.extend(review_result["comments"])
+                        summary_blocks.append(f"### {review_result['summary']}")
+                    elif review_result and review_result.get("summary"):
+                        # No line comments but have summary
+                        summary_blocks.append(f"### {review_result['summary']}")
 
+                # Create review with line-specific comments
                 if all_review_comments:
+                    # Generate overall summary
+                    overall_summary = f"🤖 **AI Code Review**\n\nFound {len(all_review_comments)} issue{'s' if len(all_review_comments) != 1 else ''} across {len([f for f in files if f.status != 'removed' and f.patch and len(f.patch) <= MAX_DIFF_SIZE])} file{'s' if len(files) != 1 else ''}.\n\n"
+                    overall_summary += "\n---\n".join(summary_blocks)
+
+                    try:
+                        pr.create_review(
+                            body=overall_summary,
+                            event="COMMENT",
+                            comments=all_review_comments,
+                        )
+                        print(f"✅ Created review with {len(all_review_comments)} line-specific comments")
+                    except GithubException as e:
+                        print(f"⚠️ Error creating review with line comments: {e}")
+                        # Fallback to comment-only review
+                        pr.create_review(
+                            body=overall_summary + f"\n\n⚠️ Could not add line-specific comments due to API limitations.",
+                            event="COMMENT",
+                        )
+                elif summary_blocks:
+                    # No line comments but have summaries
+                    overall_summary = "🤖 **AI Code Review**\n\n" + "\n---\n".join(summary_blocks)
                     pr.create_review(
-                        body="🤖 **AI Code Review**\n\n" + "\n---\n".join(summary_blocks),
-                        event=action_flag,
-                        comments=all_review_comments,
+                        body=overall_summary,
+                        event="COMMENT",
                     )
                 else:
                     pr.create_review(
