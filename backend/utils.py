@@ -1,5 +1,6 @@
 import re
-from typing import List
+from typing import List, Dict, Optional
+from backend.diff_parser import parse_diff_hunks, map_comment_to_diff_position, format_ai_response_for_line_comments
 
 
 def detect_language_from_filename(filename: str) -> str:
