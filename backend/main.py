@@ -122,4 +122,20 @@ async def github_webhook(request: Request):
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail=f"Internal error: {e}")
 
+    elif event == "issue_comment":
+        # Handle on-demand review triggers from PR comments
+        action = payload.get("action")
+        if action in ["created"]:
+            try:
+                comment = payload.get("comment", {}).get("body", "")
+                issue = payload.get("issue", {})
+
+                # Check if this is a PR comment (issues in PRs are also issues)
+                if issue.get("pull_request") and is_review_command(comment):
+                    handle_manual_review_request(payload, comment)
+
+            except Exception as e:
+                print(f"⚠️ Error handling issue comment: {e}")
+                traceback.print_exc()
+
     return {"status": "success"}
