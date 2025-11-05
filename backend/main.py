@@ -321,7 +321,7 @@ async def github_webhook(request: Request):
                     if len(file.patch) > MAX_DIFF_SIZE:
                         continue
 
-                    # Use the new line-level review system
+                    # Use the enhanced review system with all features
                     review_result = review_patch_line_level(
                         file.patch,
                         file.filename,
@@ -339,6 +339,60 @@ async def github_webhook(request: Request):
                     elif review_result and review_result.get("summary"):
                         # No line comments but have summary
                         summary_blocks.append(f"### {review_result['summary']}")
+
+                    # Generate multi-lens analysis for comprehensive review
+                    lens_options = ["security", "performance", "best_practices"]
+                    try:
+                        # Get context for enhanced analysis
+                        from backend.semantic_search import semantic_search
+                        context_chunks = semantic_search(
+                            file.patch, index, metadata, repo_name, head_sha, file.filename
+                        )
+
+                        lens_result = multi_lens_review(
+                            file.patch,
+                            file.filename,
+                            lens_options,
+                            context_chunks
+                        )
+
+                        if lens_result.get("all_comments"):
+                            # Convert lens comments to GitHub format
+                            for comment in lens_result["all_comments"]:
+                                if "line" in comment and comment["line"]:
+                                    all_review_comments.append({
+                                        "path": comment["path"],
+                                        "body": comment["body"],
+                                        "line": comment["line"],
+                                        "position": None  # Use line instead of position
+                                    })
+                                else:
+                                    # Add as summary comment if no line number
+                                    summary_blocks.append(f"### 🔍 {lens_result.get('summary', 'Multi-lens analysis')}")
+
+                    except Exception as e:
+                        print(f"⚠️ Error in multi-lens analysis for {file.filename}: {e}")
+
+                    # Generate code suggestions if enabled
+                    try:
+                        from backend.suggestions import generate_suggestions_for_file
+                        suggestion_result = generate_suggestions_for_file(
+                            file.patch, file.filename, context_chunks if 'context_chunks' in locals() else []
+                        )
+
+                        if suggestion_result.get("github_suggestions"):
+                            # Add suggestions as review comments
+                            for suggestion in suggestion_result["github_suggestions"]:
+                                all_review_comments.append({
+                                    "path": suggestion["path"],
+                                    "body": f"💡 **Code Suggestion**\n\n{suggestion['body']}\n\n**Proposed Fix:**\n```suggestion\n{suggestion['suggestion']}\n```",
+                                    "line": suggestion.get("position")
+                                })
+
+                            summary_blocks.append(f"### 💡 Found {len(suggestion_result['github_suggestions'])} code suggestion{'s' if len(suggestion_result['github_suggestions']) != 1 else ''}")
+
+                    except Exception as e:
+                        print(f"⚠️ Error generating suggestions for {file.filename}: {e}")
 
                 # Create review with line-specific comments
                 if all_review_comments:
