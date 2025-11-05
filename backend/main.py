@@ -9,6 +9,10 @@ from backend.auth import get_installation_token
 from backend.repo_fetcher import save_repo_snapshot
 from backend.context_indexer import index_repo
 from backend.config import GITHUB_WEBHOOK_SECRET as WEBHOOK_SECRET, MAX_DIFF_SIZE
+from backend.review_lenses import multi_lens_review, get_available_lenses
+from backend.summarizer import generate_pr_summary, format_summary_for_comment
+from backend.labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
+import re
 
 app = FastAPI()
 
