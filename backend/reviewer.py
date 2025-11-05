@@ -88,12 +88,15 @@ def review_single_patch(patch: str, filename: str, language: str, symbols: List[
             for comment_text in ai_comments:
                 comment_pos = map_comment_to_position(comment_text, hunks, filename)
                 if comment_pos:
-                    mapped_comments.append({
+                    comment_data = {
                         "path": comment_pos.path,
                         "body": comment_pos.body,
-                        "position": comment_pos.position,
-                        "line": comment_pos.line
-                    })
+                        "position": comment_pos.position
+                    }
+                    # Only include line if it's a valid number
+                    if comment_pos.line is not None:
+                        comment_data["line"] = comment_pos.line
+                    mapped_comments.append(comment_data)
 
             return mapped_comments
     except Exception as e:
@@ -134,12 +137,15 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
                 for comment_text in ai_comments:
                     comment_pos = map_comment_to_position(comment_text, hunks, filename)
                     if comment_pos:
-                        all_comments.append({
+                        comment_data = {
                             "path": comment_pos.path,
                             "body": comment_pos.body,
-                            "position": comment_pos.position,
-                            "line": comment_pos.line
-                        })
+                            "position": comment_pos.position
+                        }
+                        # Only include line if it's a valid number
+                        if comment_pos.line is not None:
+                            comment_data["line"] = comment_pos.line
+                        all_comments.append(comment_data)
         except Exception as e:
             print(f"Error reviewing chunk {i+1} for {filename}: {e}")
             continue
@@ -244,7 +250,7 @@ def generate_review_summary(comments: List[Dict[str, Any]], filename: str, langu
 
     for issue_type, count in issue_types.items():
         if count > 0:
-            summary_parts.append(f"  • {count.replace('_', ' ').title()}: {count}")
+            summary_parts.append(f"  • {issue_type.replace('_', ' ').title()}: {count}")
 
     return "\n".join(summary_parts)
 

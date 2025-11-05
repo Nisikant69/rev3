@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict, Optional
-from backend.diff_parser import parse_diff_hunks, map_comment_to_diff_position, format_ai_response_for_line_comments
+from backend.diff_parser import parse_diff_hunks as diff_parser_parse_hunks, map_comment_to_diff_position, format_ai_response_for_line_comments
 
 
 def detect_language_from_filename(filename: str) -> str:
@@ -64,7 +64,7 @@ def parse_diff_hunks(patch: str):
     Returns:
         List of DiffHunk objects
     """
-    return parse_diff_hunks(patch)
+    return diff_parser_parse_hunks(patch)
 
 
 def map_comment_to_position(comment: str, hunks, filename: str):
