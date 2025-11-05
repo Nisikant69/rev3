@@ -394,11 +394,32 @@ async def github_webhook(request: Request):
                     except Exception as e:
                         print(f"⚠️ Error generating suggestions for {file.filename}: {e}")
 
-                # Create review with line-specific comments
+                # Generate PR summary and labels
+                try:
+                    pr_summary = generate_pr_summary(files, repo_name, pr.title, pr.body)
+                    summary_comment = format_summary_for_comment(pr_summary)
+                    summary_blocks.insert(0, summary_comment)  # Add summary first
+
+                    # Apply automatic labels
+                    existing_labels = [label.name for label in pr.get_labels()]
+                    label_result = generate_pr_labels(files, pr.title, pr.body, existing_labels)
+
+                    if label_result.get("labels"):
+                        create_missing_labels(repo, label_result["labels"])
+                        apply_labels_to_pr(pr, label_result["labels"])
+                        print(f"✅ Applied labels: {', '.join(label_result['labels'])}")
+
+                except Exception as e:
+                    print(f"⚠️ Error in summary/labeling: {e}")
+
+                # Create comprehensive review with all features
                 if all_review_comments:
-                    # Generate overall summary
-                    overall_summary = f"🤖 **AI Code Review**\n\nFound {len(all_review_comments)} issue{'s' if len(all_review_comments) != 1 else ''} across {len([f for f in files if f.status != 'removed' and f.patch and len(f.patch) <= MAX_DIFF_SIZE])} file{'s' if len(files) != 1 else ''}.\n\n"
-                    overall_summary += "\n---\n".join(summary_blocks)
+                    # Generate enhanced overall summary
+                    overall_summary = f"🤖 **AI Code Review - Comprehensive Analysis**\n\n"
+                    overall_summary += f"📊 **Files Analyzed:** {len([f for f in files if f.status != 'removed' and f.patch and len(f.patch) <= MAX_DIFF_SIZE])}\n"
+                    overall_summary += f"🔍 **Lenses Applied:** Security, Performance, Best Practices\n"
+                    overall_summary += f"💡 **Issues Found:** {len(all_review_comments)} total\n\n"
+                    overall_summary += "---\n" + "\n---\n".join(summary_blocks)
 
                     try:
                         pr.create_review(
