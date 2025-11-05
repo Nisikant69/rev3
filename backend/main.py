@@ -466,8 +466,44 @@ async def github_webhook(request: Request):
                 issue = payload.get("issue", {})
 
                 # Check if this is a PR comment (issues in PRs are also issues)
-                if issue.get("pull_request") and is_review_command(comment):
-                    handle_manual_review_request(payload, comment)
+                if issue.get("pull_request"):
+                    if is_review_command(comment):
+                        handle_manual_review_request(payload, comment)
+                    else:
+                        # Check if it's a conversational query
+                        from backend.conversation import handle_conversational_comment, is_bot_mentioned
+                        if is_bot_mentioned(comment, "review-bot[bot]"):  # Default bot username
+                            try:
+                                # Get PR context for conversation
+                                pr_number = issue.get("number")
+                                pr_context = {
+                                    "pr_number": pr_number,
+                                    "recent_reviews": [],
+                                    "files": []
+                                }
+
+                                # Get bot's previous comments
+                                pr = repo.get_pull(pr_number)
+                                issue_comments = pr.get_issue_comments()
+                                bot_comments = [c for c in issue_comments if c.user.login == "review-bot[bot]"]
+
+                                # Generate conversational response
+                                response = handle_conversational_comment(
+                                    payload.get("comment", {}),
+                                    pr_context,
+                                    "review-bot[bot]",
+                                    repo_name,
+                                    pr.head.sha,
+                                    index,
+                                    metadata
+                                )
+
+                                if response:
+                                    pr.create_issue_comment(response)
+                                    print(f"💬 Responded to conversational query on PR #{pr_number}")
+
+                            except Exception as e:
+                                print(f"⚠️ Error handling conversational comment: {e}")
 
             except Exception as e:
                 print(f"⚠️ Error handling issue comment: {e}")
