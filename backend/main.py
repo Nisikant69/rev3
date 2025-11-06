@@ -12,6 +12,7 @@ from backend.config import GITHUB_WEBHOOK_SECRET as WEBHOOK_SECRET, MAX_DIFF_SIZ
 from backend.review_lenses import multi_lens_review, get_available_lenses
 from backend.summarizer import generate_pr_summary, format_summary_for_comment
 from backend.labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
+from backend.api_rate_limiter import get_api_stats, set_api_rate_limits
 import re
 
 app = FastAPI()
