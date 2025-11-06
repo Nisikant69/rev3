@@ -475,7 +475,7 @@ async def github_webhook(request: Request):
                         handle_manual_review_request(payload, comment)
                     else:
                         # Check if it's a conversational query
-                        from backend.conversation import handle_conversational_comment, is_bot_mentioned
+                        from conversation import handle_conversational_comment, is_bot_mentioned
                         if is_bot_mentioned(comment, "review-bot[bot]"):  # Default bot username
                             try:
                                 # Get PR context for conversation
