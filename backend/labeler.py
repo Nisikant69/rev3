@@ -294,8 +294,10 @@ def analyze_content_based_labels(files: List[Any], pr_title: str, pr_description
     combined_text = f"{all_text} {all_patches}"
     for patterns, label, reason in pattern_definitions:
         if any(re.search(pattern, combined_text) for pattern in patterns):
-            labels.add(label)
-            reasons[label] = reason
+            # Ensure label is a string
+            clean_label = str(label) if not isinstance(label, str) else label
+            labels.add(clean_label)
+            reasons[clean_label] = reason
 
     # Check for dependency changes
     if any(pattern in all_patches for pattern in [
