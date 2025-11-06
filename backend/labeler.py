@@ -45,12 +45,24 @@ def generate_pr_labels(files: List[Any], pr_title: str, pr_description: str,
     # Remove labels that already exist
     new_labels = all_labels - existing_labels
 
+    # Ensure all labels are strings (not lists)
+    clean_labels = set()
+    for label in new_labels:
+        if isinstance(label, list):
+            # If it's a list, take the first item or join with underscores
+            clean_labels.add(str(label[0]) if label else "")
+        elif isinstance(label, str):
+            clean_labels.add(label)
+        else:
+            # Convert to string for safety
+            clean_labels.add(str(label))
+
     # Combine all reasons
     all_reasons = {**file_reasons, **content_reasons, **size_reasons, **type_reasons}
 
     return {
-        "labels": sorted(list(new_labels)),
-        "reasons": {label: reason for label, reason in all_reasons.items() if label in new_labels},
+        "labels": sorted(list(clean_labels)),
+        "reasons": {label: reason for label, reason in all_reasons.items() if label in clean_labels},
         "existing": sorted(list(existing_labels)),
         "all": sorted(list(all_labels))
     }
