@@ -39,8 +39,12 @@ class CodeSuggestionEngine:
         """
         prompt = self.create_suggestion_prompt(patch, filename, context)
 
+        def make_api_call():
+            return self.model.generate_content(prompt)
+
         try:
-            response = self.model.generate_content(prompt)
+            # Use rate limiter for API call
+            response = execute_with_rate_limit(make_api_call, priority=2)
             if response and response.text:
                 return self.parse_suggestion_response(response.text, filename, patch)
         except Exception as e:
