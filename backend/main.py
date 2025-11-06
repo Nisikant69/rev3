@@ -147,7 +147,7 @@ def perform_enhanced_review(pr, repo, options: Dict[str, Any] = None):
             print("🔄 Forcing reindex...")
             # Clear existing index if needed
             import shutil
-            from backend.config import INDEX_DIR
+            from config import INDEX_DIR
             index_path = INDEX_DIR / f"{repo_name.replace('/', '__')}_{head_sha}.faiss"
             metadata_path = INDEX_DIR / f"{repo_name.replace('/', '__')}_{head_sha}_meta.json"
             if index_path.exists():
