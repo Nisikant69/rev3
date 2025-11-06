@@ -5,10 +5,15 @@ using GitHub's suggestion API for one-click fixes.
 """
 
 import json
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import google.generativeai as genai
 from typing import List, Dict, Any, Optional, Tuple
 from backend.utils import detect_language_from_filename
 from backend.config import GEMINI_API_KEY
+from backend.api_rate_limiter import execute_with_rate_limit
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
@@ -34,8 +39,12 @@ class CodeSuggestionEngine:
         """
         prompt = self.create_suggestion_prompt(patch, filename, context)
 
+        def make_api_call():
+            return self.model.generate_content(prompt)
+
         try:
-            response = self.model.generate_content(prompt)
+            # Use rate limiter for API call
+            response = execute_with_rate_limit(make_api_call, priority=2)
             if response and response.text:
                 return self.parse_suggestion_response(response.text, filename, patch)
         except Exception as e:

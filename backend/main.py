@@ -1,4 +1,8 @@
 # main.py
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, Request, HTTPException
 import hmac, hashlib, os, json, traceback
 from github import Github, GithubException
@@ -12,9 +16,19 @@ from backend.config import GITHUB_WEBHOOK_SECRET as WEBHOOK_SECRET, MAX_DIFF_SIZ
 from backend.review_lenses import multi_lens_review, get_available_lenses
 from backend.summarizer import generate_pr_summary, format_summary_for_comment
 from backend.labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
+from backend.api_rate_limiter import get_api_stats, set_api_rate_limits
+from backend.suggestions import generate_suggestions_for_file
 import re
 
 app = FastAPI()
+
+# Configure rate limits for Gemini free tier (2 requests per minute)
+set_api_rate_limits(max_per_minute=2, max_per_hour=50)
+
+@app.get("/api/stats")
+def get_rate_limit_stats():
+    """Get API rate limiting statistics."""
+    return get_api_stats()
 
 
 def is_review_command(comment: str) -> bool:
@@ -90,11 +104,16 @@ def handle_manual_review_request(payload: Dict[str, Any], comment: str):
         # Parse review command options
         options = parse_review_command(comment)
 
-        # Acknowledge the request
+        # Acknowledge the request with rate limiting notice
+        api_stats = get_api_stats()
+        rate_limit_msg = ""
+        if api_stats.get('minute_calls', 0) > 0:
+            rate_limit_msg = f"\n\n⚠️ **Rate Limit Notice**: Due to API limits, processing may take longer. Current usage: {api_stats['minute_calls']}/2 requests per minute."
+
         pr.create_issue_comment(
             f"🤖 **AI Review Started**\n\n"
             f"Review requested by @{comment_user} with options: {', '.join(options['lenses'])} lenses.\n\n"
-            f"⏳ Processing... This may take a few moments for large PRs."
+            f"⏳ Processing... This may take a few moments for large PRs.{rate_limit_msg}"
         )
 
         # Perform the review
@@ -375,7 +394,6 @@ async def github_webhook(request: Request):
 
                     # Generate code suggestions if enabled
                     try:
-                        from backend.suggestions import generate_suggestions_for_file
                         suggestion_result = generate_suggestions_for_file(
                             file.patch, file.filename, context_chunks if 'context_chunks' in locals() else []
                         )

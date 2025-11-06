@@ -5,12 +5,17 @@ Allows users to ask questions about review comments and get detailed explanation
 """
 
 import json
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import google.generativeai as genai
 from typing import List, Dict, Any, Optional, Tuple
 from backend.utils import detect_language_from_filename
 from backend.config import GEMINI_API_KEY
 from backend.semantic_search import semantic_search, get_function_context, get_class_context
 from backend.context_indexer import load_dependency_graph, get_related_files
+from backend.api_rate_limiter import execute_with_rate_limit
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
@@ -160,8 +165,12 @@ class ConversationManager:
         """
         prompt = self.create_conversation_prompt(question, context, pr_context, repo_name, commit_sha, index, metadata)
 
+        def make_api_call():
+            return self.model.generate_content(prompt)
+
         try:
-            response = self.model.generate_content(prompt)
+            # Use rate limiter for API call
+            response = execute_with_rate_limit(make_api_call, priority=1)
             if response and response.text:
                 return self.format_response(response.text, context)
         except Exception as e:

@@ -5,6 +5,10 @@ file patterns, content analysis, and change characteristics.
 """
 
 import re
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from typing import List, Dict, Set, Any, Optional
 from backend.utils import detect_language_from_filename, extract_symbols_from_patch
 from backend.config import ENABLE_AUTO_LABELING
@@ -45,12 +49,24 @@ def generate_pr_labels(files: List[Any], pr_title: str, pr_description: str,
     # Remove labels that already exist
     new_labels = all_labels - existing_labels
 
+    # Ensure all labels are strings (not lists)
+    clean_labels = set()
+    for label in new_labels:
+        if isinstance(label, list):
+            # If it's a list, take the first item or join with underscores
+            clean_labels.add(str(label[0]) if label else "")
+        elif isinstance(label, str):
+            clean_labels.add(label)
+        else:
+            # Convert to string for safety
+            clean_labels.add(str(label))
+
     # Combine all reasons
     all_reasons = {**file_reasons, **content_reasons, **size_reasons, **type_reasons}
 
     return {
-        "labels": sorted(list(new_labels)),
-        "reasons": {label: reason for label, reason in all_reasons.items() if label in new_labels},
+        "labels": sorted(list(clean_labels)),
+        "reasons": {label: reason for label, reason in all_reasons.items() if label in clean_labels},
         "existing": sorted(list(existing_labels)),
         "all": sorted(list(all_labels))
     }
@@ -198,7 +214,16 @@ def analyze_file_based_labels(files: List[Any]) -> tuple[Set[str], Dict[str, str
                 else:
                     reasons[label] = f"Changes {label} file"
 
-    return labels, reasons
+    # Safety check - ensure all labels are strings
+    clean_labels = set()
+    clean_reasons = {}
+    for label in labels:
+        clean_label = str(label) if not isinstance(label, str) else label
+        clean_labels.add(clean_label)
+        if label in reasons:
+            clean_reasons[clean_label] = reasons[label]
+
+    return clean_labels, clean_reasons
 
 
 def analyze_content_based_labels(files: List[Any], pr_title: str, pr_description: str) -> tuple[Set[str], Dict[str, str]]:
@@ -278,8 +303,10 @@ def analyze_content_based_labels(files: List[Any], pr_title: str, pr_description
     combined_text = f"{all_text} {all_patches}"
     for patterns, label, reason in pattern_definitions:
         if any(re.search(pattern, combined_text) for pattern in patterns):
-            labels.add(label)
-            reasons[label] = reason
+            # Ensure label is a string
+            clean_label = str(label) if not isinstance(label, str) else label
+            labels.add(clean_label)
+            reasons[clean_label] = reason
 
     # Check for dependency changes
     if any(pattern in all_patches for pattern in [
@@ -296,7 +323,16 @@ def analyze_content_based_labels(files: List[Any], pr_title: str, pr_description
         labels.add("database")
         reasons["database"] = "Includes database changes"
 
-    return labels, reasons
+    # Final safety check - ensure all labels are strings
+    clean_labels = set()
+    clean_reasons = {}
+    for label in labels:
+        clean_label = str(label) if not isinstance(label, str) else label
+        clean_labels.add(clean_label)
+        if label in reasons:
+            clean_reasons[clean_label] = reasons[label]
+
+    return clean_labels, clean_reasons
 
 
 def analyze_size_based_labels(files: List[Any]) -> tuple[Set[str], Dict[str, str]]:
@@ -352,7 +388,16 @@ def analyze_size_based_labels(files: List[Any]) -> tuple[Set[str], Dict[str, str
         labels.add("addition-heavy")
         reasons["addition-heavy"] = "Primarily adds code"
 
-    return labels, reasons
+    # Safety check - ensure all labels are strings
+    clean_labels = set()
+    clean_reasons = {}
+    for label in labels:
+        clean_label = str(label) if not isinstance(label, str) else label
+        clean_labels.add(clean_label)
+        if label in reasons:
+            clean_reasons[clean_label] = reasons[label]
+
+    return clean_labels, clean_reasons
 
 
 def analyze_type_based_labels(pr_title: str, pr_description: str, files: List[Any]) -> tuple[Set[str], Dict[str, str]]:
@@ -402,7 +447,16 @@ def analyze_type_based_labels(pr_title: str, pr_description: str, files: List[An
         labels.add("dependencies")
         reasons["dependencies"] = "Updates project dependencies"
 
-    return labels, reasons
+    # Safety check - ensure all labels are strings
+    clean_labels = set()
+    clean_reasons = {}
+    for label in labels:
+        clean_label = str(label) if not isinstance(label, str) else label
+        clean_labels.add(clean_label)
+        if label in reasons:
+            clean_reasons[clean_label] = reasons[label]
+
+    return clean_labels, clean_reasons
 
 
 def apply_labels_to_pr(pr, labels: List[str], dry_run: bool = False) -> bool:
@@ -420,8 +474,25 @@ def apply_labels_to_pr(pr, labels: List[str], dry_run: bool = False) -> bool:
     if not labels:
         return True
 
+    # Clean labels to ensure they're all strings
+    clean_labels = []
+    for label in labels:
+        if isinstance(label, list):
+            # If it's a list, take the first item or skip
+            if label:
+                clean_labels.append(str(label[0]))
+        elif isinstance(label, str):
+            clean_labels.append(label)
+        else:
+            # Convert to string if it's not a list or string
+            clean_labels.append(str(label))
+
     if dry_run:
-        print(f"Would apply labels: {', '.join(labels)}")
+        try:
+            print(f"Would apply labels: {', '.join(clean_labels)}")
+        except Exception as e:
+            print(f"Error in dry run label joining: {e}")
+            print(f"Labels: {clean_labels}")
         return True
 
     try:
@@ -429,11 +500,15 @@ def apply_labels_to_pr(pr, labels: List[str], dry_run: bool = False) -> bool:
         existing_labels = [label.name for label in pr.get_labels()]
 
         # Only add new labels
-        new_labels = [label for label in labels if label not in existing_labels]
+        new_labels = [label for label in clean_labels if label not in existing_labels]
 
         if new_labels:
             pr.add_to_labels(new_labels)
-            print(f"✅ Applied labels: {', '.join(new_labels)}")
+            try:
+                print(f"✅ Applied labels: {', '.join(new_labels)}")
+            except Exception as e:
+                print(f"Error printing applied labels: {e}")
+                print(f"Labels: {new_labels}")
         else:
             print("ℹ️ No new labels to apply")
 
