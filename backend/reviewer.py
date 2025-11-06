@@ -80,10 +80,14 @@ def review_single_patch(patch: str, filename: str, language: str, symbols: List[
     # Create line-specific review prompt
     prompt = create_line_specific_review_prompt(patch, filename, language, symbols, context_chunks, hunks)
 
-    model = genai.GenerativeModel("gemini-2.5-pro")
+    def make_api_call():
+        model = genai.GenerativeModel("gemini-2.5-pro")
+        return model.generate_content(prompt)
 
     try:
-        response = model.generate_content(prompt)
+        # Use rate limiter for API call
+        response = execute_with_rate_limit(make_api_call, priority=1)
+
         if response and response.text:
             # Parse the AI response into individual line-specific comments
             ai_comments = format_ai_comments(response.text)
