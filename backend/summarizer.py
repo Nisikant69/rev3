@@ -11,9 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import google.generativeai as genai
 from typing import List, Dict, Any, Optional
-from backend.utils import detect_language_from_filename, extract_symbols_from_patch, estimate_tokens
-from backend.config import GEMINI_API_KEY, ENABLE_SUMMARIZATION, MAX_TOKENS_PER_REQUEST
-from backend.api_rate_limiter import execute_with_rate_limit
+from utils import detect_language_from_filename, extract_symbols_from_patch, estimate_tokens
+from config import GEMINI_API_KEY, ENABLE_SUMMARIZATION, MAX_TOKENS_PER_REQUEST
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
@@ -94,13 +93,9 @@ def generate_ai_summary(file_analysis: List[Dict[str, Any]], repo_name: str,
     # Create summary prompt
     prompt = create_summary_prompt(file_analysis, repo_name, pr_title, pr_description)
 
-    def make_api_call():
-        model = genai.GenerativeModel("gemini-2.5-pro")
-        return model.generate_content(prompt)
-
     try:
-        # Use rate limiter for API call
-        response = execute_with_rate_limit(make_api_call, priority=2)
+        model = genai.GenerativeModel("gemini-2.5-pro")
+        response = model.generate_content(prompt)
         if response and response.text:
             # Parse the AI response
             return parse_ai_summary_response(response.text)

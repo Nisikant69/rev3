@@ -12,7 +12,7 @@ from pathlib import Path
 import os
 from datetime import datetime
 
-from backend.config import DATA_DIR
+from config import DATA_DIR
 
 
 @dataclass

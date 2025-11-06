@@ -1,4 +1,4 @@
-from backend.utils import trim_diff
+from utils import trim_diff
 
 def test_trim_diff():
     patch = """@@ -1,2 +1,2 @@

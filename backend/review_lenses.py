@@ -11,9 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import google.generativeai as genai
 from typing import List, Dict, Any, Optional
-from backend.utils import detect_language_from_filename
-from backend.config import GEMINI_API_KEY
-from backend.api_rate_limiter import execute_with_rate_limit
+from utils import detect_language_from_filename
+from config import GEMINI_API_KEY
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
@@ -55,13 +54,9 @@ class SecurityLens(ReviewLens):
         """Analyze code for security vulnerabilities."""
         prompt = self.create_prompt(patch, filename, context)
 
-        def make_api_call():
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            return model.generate_content(prompt)
-
         try:
-            # Use rate limiter for API call
-            response = execute_with_rate_limit(make_api_call, priority=2)
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            response = model.generate_content(prompt)
             if response and response.text:
                 return self.parse_security_response(response.text, filename)
         except Exception as e:
@@ -211,13 +206,9 @@ class PerformanceLens(ReviewLens):
         """Analyze code for performance issues."""
         prompt = self.create_prompt(patch, filename, context)
 
-        def make_api_call():
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            return model.generate_content(prompt)
-
         try:
-            # Use rate limiter for API call
-            response = execute_with_rate_limit(make_api_call, priority=2)
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            response = model.generate_content(prompt)
             if response and response.text:
                 return self.parse_performance_response(response.text, filename)
         except Exception as e:
@@ -354,13 +345,9 @@ class BestPracticesLens(ReviewLens):
         """Analyze code for best practices violations."""
         prompt = self.create_prompt(patch, filename, context)
 
-        def make_api_call():
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            return model.generate_content(prompt)
-
         try:
-            # Use rate limiter for API call
-            response = execute_with_rate_limit(make_api_call, priority=2)
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            response = model.generate_content(prompt)
             if response and response.text:
                 return self.parse_best_practices_response(response.text, filename)
         except Exception as e:

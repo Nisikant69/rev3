@@ -16,7 +16,7 @@ import hmac
 import hashlib
 import base64
 
-from backend.config import DATA_DIR
+from config import DATA_DIR
 
 
 @dataclass

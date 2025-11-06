@@ -9,8 +9,8 @@ import numpy as np
 import faiss
 import networkx as nx
 
-from backend.config import INDEX_DIR, CHUNK_SIZE, CHUNK_OVERLAP, REPO_CACHE_DIR
-from backend.utils import detect_language_from_filename, get_function_boundaries
+from config import INDEX_DIR, CHUNK_SIZE, CHUNK_OVERLAP, REPO_CACHE_DIR
+from utils import detect_language_from_filename, get_function_boundaries
 
 MODEL_NAME = "all-MiniLM-L6-v2"  # or any local sentence-transformers model
 _model = None

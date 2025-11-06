@@ -5,14 +5,13 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.utils import (
+from utils import (
     trim_diff, extract_symbols_from_patch, detect_language_from_filename,
     parse_diff_hunks, map_comment_to_position, format_ai_comments,
     enhance_trim_diff, estimate_tokens, should_chunk_file, chunk_code_by_functions
 )
-from backend.semantic_search import semantic_search
-from backend.config import GEMINI_API_KEY, TOP_K, MAX_TOKENS_PER_REQUEST
-from backend.api_rate_limiter import execute_with_rate_limit
+from semantic_search import semantic_search
+from config import GEMINI_API_KEY, TOP_K, MAX_TOKENS_PER_REQUEST
 import faiss
 from typing import List, Dict, Any
 import time
@@ -80,13 +79,9 @@ def review_single_patch(patch: str, filename: str, language: str, symbols: List[
     # Create line-specific review prompt
     prompt = create_line_specific_review_prompt(patch, filename, language, symbols, context_chunks, hunks)
 
-    def make_api_call():
-        model = genai.GenerativeModel("gemini-2.5-pro")
-        return model.generate_content(prompt)
-
     try:
-        # Use rate limiter for API call
-        response = execute_with_rate_limit(make_api_call, priority=1)
+        model = genai.GenerativeModel("gemini-2.5-pro")
+        response = model.generate_content(prompt)
 
         if response and response.text:
             # Parse the AI response into individual line-specific comments
@@ -135,13 +130,9 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
             group_patch, filename, language, symbols, context_chunks, hunk_group
         )
 
-        def make_api_call():
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            return model.generate_content(prompt)
-
         try:
-            # Use rate limiter for API call
-            response = execute_with_rate_limit(make_api_call, priority=2)  # Lower priority for chunks
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            response = model.generate_content(prompt)
             if response and response.text:
                 ai_comments = format_ai_comments(response.text)
 
@@ -162,8 +153,8 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
             print(f"Error reviewing chunk {i+1} for {filename}: {e}")
             continue
 
-        # Add delay between chunks (rate limiter will handle most of this)
-        time.sleep(5)  # Increased delay to respect free tier limits
+        # Add delay between chunks to prevent API issues
+        time.sleep(1)
 
     return all_comments
 

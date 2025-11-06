@@ -1,6 +1,6 @@
 import os
-from backend.context_indexer import index_repo
-from backend.semantic_search import semantic_search
+from context_indexer import index_repo
+from semantic_search import semantic_search
 
 def test_index_and_search(tmp_path):
     # Create fake repo dir

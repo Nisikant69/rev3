@@ -1,7 +1,7 @@
 import os
 import logging
 from github import Repository
-from backend.config import REPO_CACHE_DIR, MAX_FILE_CHARS
+from config import REPO_CACHE_DIR, MAX_FILE_CHARS
 
 logger = logging.getLogger(__name__)
 

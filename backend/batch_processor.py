@@ -14,14 +14,14 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
-from backend.config import DATA_DIR, MAX_DIFF_SIZE
-from backend.reviewer import review_patch_line_level
-from backend.review_lenses import multi_lens_review
-from backend.summarizer import generate_pr_summary, format_summary_for_comment
-from backend.labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
-from backend.suggestions import generate_suggestions_for_file
-from backend.semantic_search import semantic_search
-from backend.analytics import analytics_engine, ReviewMetrics
+from config import DATA_DIR, MAX_DIFF_SIZE
+from reviewer import review_patch_line_level
+from review_lenses import multi_lens_review
+from summarizer import generate_pr_summary, format_summary_for_comment
+from labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
+from suggestions import generate_suggestions_for_file
+from semantic_search import semantic_search
+from analytics import analytics_engine, ReviewMetrics
 
 
 @dataclass
@@ -278,8 +278,8 @@ class BatchProcessor:
             files = list(pr.get_files())
 
             # Index repository if needed
-            from backend.repo_fetcher import save_repo_snapshot
-            from backend.context_indexer import index_repo
+            from repo_fetcher import save_repo_snapshot
+            from context_indexer import index_repo
 
             repo_dir = save_repo_snapshot(repo, head_sha)
             index, metadata = index_repo(repo_dir, job.repo_name, head_sha)
