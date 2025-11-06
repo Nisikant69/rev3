@@ -349,7 +349,7 @@ async def github_webhook(request: Request):
                     lens_options = ["security", "performance", "best_practices"]
                     try:
                         # Get context for enhanced analysis
-                        from backend.semantic_search import semantic_search
+                        from semantic_search import semantic_search
                         context_chunks = semantic_search(
                             file.patch, index, metadata, repo_name, head_sha, file.filename
                         )
