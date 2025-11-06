@@ -1,5 +1,5 @@
 import os
-from backend.context_indexer import index_repo
+from context_indexer import index_repo
 from backend.semantic_search import semantic_search
 
 def test_index_and_search(tmp_path):
