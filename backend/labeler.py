@@ -10,8 +10,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from typing import List, Dict, Set, Any, Optional
-from backend.utils import detect_language_from_filename, extract_symbols_from_patch
-from backend.config import ENABLE_AUTO_LABELING
+from utils import detect_language_from_filename, extract_symbols_from_patch
+from config import ENABLE_AUTO_LABELING
 
 
 def generate_pr_labels(files: List[Any], pr_title: str, pr_description: str,
