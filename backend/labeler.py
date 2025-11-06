@@ -438,7 +438,16 @@ def analyze_type_based_labels(pr_title: str, pr_description: str, files: List[An
         labels.add("dependencies")
         reasons["dependencies"] = "Updates project dependencies"
 
-    return labels, reasons
+    # Safety check - ensure all labels are strings
+    clean_labels = set()
+    clean_reasons = {}
+    for label in labels:
+        clean_label = str(label) if not isinstance(label, str) else label
+        clean_labels.add(clean_label)
+        if label in reasons:
+            clean_reasons[clean_label] = reasons[label]
+
+    return clean_labels, clean_reasons
 
 
 def apply_labels_to_pr(pr, labels: List[str], dry_run: bool = False) -> bool:
