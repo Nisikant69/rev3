@@ -356,8 +356,8 @@ class RateLimiter:
         self.max_calls_per_hour = max_per_hour
 
 
-# Global rate limiter instance
-rate_limiter = RateLimiter()
+# Global rate limiter instance - configured for Gemini free tier (2 requests per minute)
+rate_limiter = RateLimiter(max_calls_per_minute=2, max_calls_per_hour=50)
 
 
 def execute_with_rate_limit(func: Callable, *args, priority: int = 1, **kwargs) -> Any:
