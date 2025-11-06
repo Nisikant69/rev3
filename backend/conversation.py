@@ -165,8 +165,12 @@ class ConversationManager:
         """
         prompt = self.create_conversation_prompt(question, context, pr_context, repo_name, commit_sha, index, metadata)
 
+        def make_api_call():
+            return self.model.generate_content(prompt)
+
         try:
-            response = self.model.generate_content(prompt)
+            # Use rate limiter for API call
+            response = execute_with_rate_limit(make_api_call, priority=1)
             if response and response.text:
                 return self.format_response(response.text, context)
         except Exception as e:
