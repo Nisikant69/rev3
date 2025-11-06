@@ -153,8 +153,8 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
             print(f"Error reviewing chunk {i+1} for {filename}: {e}")
             continue
 
-        # Add delay between chunks (rate limiter will handle most of this)
-        time.sleep(5)  # Increased delay to respect free tier limits
+        # Add delay between chunks to prevent API issues
+        time.sleep(1)
 
     return all_comments
 
