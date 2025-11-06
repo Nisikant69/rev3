@@ -8,16 +8,15 @@ import hmac, hashlib, os, json, traceback
 from github import Github, GithubException
 import requests
 
-from backend.reviewer import review_patch_line_level
-from backend.auth import get_installation_token
-from backend.repo_fetcher import save_repo_snapshot
-from backend.context_indexer import index_repo
-from backend.config import GITHUB_WEBHOOK_SECRET as WEBHOOK_SECRET, MAX_DIFF_SIZE
-from backend.review_lenses import multi_lens_review, get_available_lenses
-from backend.summarizer import generate_pr_summary, format_summary_for_comment
-from backend.labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
-from backend.api_rate_limiter import get_api_stats, set_api_rate_limits
-from backend.suggestions import generate_suggestions_for_file
+from reviewer import review_patch_line_level
+from auth import get_installation_token
+from repo_fetcher import save_repo_snapshot
+from context_indexer import index_repo
+from config import GITHUB_WEBHOOK_SECRET as WEBHOOK_SECRET, MAX_DIFF_SIZE
+from review_lenses import multi_lens_review, get_available_lenses
+from summarizer import generate_pr_summary, format_summary_for_comment
+from labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
+from suggestions import generate_suggestions_for_file
 import re
 
 app = FastAPI()
