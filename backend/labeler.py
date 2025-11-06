@@ -325,8 +325,6 @@ def analyze_content_based_labels(files: List[Any], pr_title: str, pr_description
 
     return clean_labels, clean_reasons
 
-    return labels, reasons
-
 
 def analyze_size_based_labels(files: List[Any]) -> tuple[Set[str], Dict[str, str]]:
     """
