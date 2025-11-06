@@ -5,10 +5,15 @@ and analyses of pull request changes.
 """
 
 import json
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import google.generativeai as genai
 from typing import List, Dict, Any, Optional
 from backend.utils import detect_language_from_filename, extract_symbols_from_patch, estimate_tokens
 from backend.config import GEMINI_API_KEY, ENABLE_SUMMARIZATION, MAX_TOKENS_PER_REQUEST
+from backend.api_rate_limiter import execute_with_rate_limit
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
