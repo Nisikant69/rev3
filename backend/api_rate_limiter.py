@@ -13,7 +13,6 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import deque
-import requests
 from enum import Enum
 
 from backend.config import DATA_DIR
