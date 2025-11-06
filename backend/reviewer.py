@@ -130,13 +130,9 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
             group_patch, filename, language, symbols, context_chunks, hunk_group
         )
 
-        def make_api_call():
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            return model.generate_content(prompt)
-
         try:
-            # Use rate limiter for API call
-            response = execute_with_rate_limit(make_api_call, priority=2)  # Lower priority for chunks
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            response = model.generate_content(prompt)
             if response and response.text:
                 ai_comments = format_ai_comments(response.text)
 
