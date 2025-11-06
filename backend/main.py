@@ -183,7 +183,7 @@ def perform_enhanced_review(pr, repo, options: Dict[str, Any] = None):
             # Run multi-lens analysis if requested
             if options.get("lenses"):
                 # Get context for enhanced analysis
-                from backend.semantic_search import semantic_search
+                from semantic_search import semantic_search
                 context_chunks = semantic_search(
                     file.patch, index, metadata, repo_name, head_sha, file.filename
                 )
