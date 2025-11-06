@@ -314,6 +314,17 @@ def analyze_content_based_labels(files: List[Any], pr_title: str, pr_description
         labels.add("database")
         reasons["database"] = "Includes database changes"
 
+    # Final safety check - ensure all labels are strings
+    clean_labels = set()
+    clean_reasons = {}
+    for label in labels:
+        clean_label = str(label) if not isinstance(label, str) else label
+        clean_labels.add(clean_label)
+        if label in reasons:
+            clean_reasons[clean_label] = reasons[label]
+
+    return clean_labels, clean_reasons
+
     return labels, reasons
 
 
