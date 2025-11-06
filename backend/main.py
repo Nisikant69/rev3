@@ -17,6 +17,14 @@ import re
 
 app = FastAPI()
 
+# Configure rate limits for Gemini free tier (2 requests per minute)
+set_api_rate_limits(max_per_minute=2, max_per_hour=50)
+
+@app.get("/api/stats")
+def get_rate_limit_stats():
+    """Get API rate limiting statistics."""
+    return get_api_stats()
+
 
 def is_review_command(comment: str) -> bool:
     """Check if a comment contains a review command."""
