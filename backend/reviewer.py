@@ -1,6 +1,10 @@
 # backend/reviewer.py
 import json
 import google.generativeai as genai
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from backend.utils import (
     trim_diff, extract_symbols_from_patch, detect_language_from_filename,
     parse_diff_hunks, map_comment_to_position, format_ai_comments,
@@ -8,6 +12,7 @@ from backend.utils import (
 )
 from backend.semantic_search import semantic_search
 from backend.config import GEMINI_API_KEY, TOP_K, MAX_TOKENS_PER_REQUEST
+from backend.api_rate_limiter import execute_with_rate_limit
 import faiss
 from typing import List, Dict, Any
 import time
