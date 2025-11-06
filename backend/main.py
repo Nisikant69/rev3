@@ -389,7 +389,12 @@ async def github_webhook(request: Request):
 
                     # Generate code suggestions if enabled
                     try:
-                        from backend.suggestions import generate_suggestions_for_file
+                        try:
+    from backend.suggestions import generate_suggestions_for_file
+except ImportError as e:
+    print(f"Error importing suggestions: {e}")
+    def generate_suggestions_for_file(patch, filename, context=None):
+        return {"github_suggestions": [], "summary": "Import error - suggestions disabled"}
                         suggestion_result = generate_suggestions_for_file(
                             file.patch, file.filename, context_chunks if 'context_chunks' in locals() else []
                         )
