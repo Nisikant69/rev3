@@ -95,16 +95,11 @@ def handle_manual_review_request(payload: Dict[str, Any], comment: str):
         # Parse review command options
         options = parse_review_command(comment)
 
-        # Acknowledge the request with rate limiting notice
-        api_stats = get_api_stats()
-        rate_limit_msg = ""
-        if api_stats.get('minute_calls', 0) > 0:
-            rate_limit_msg = f"\n\n⚠️ **Rate Limit Notice**: Due to API limits, processing may take longer. Current usage: {api_stats['minute_calls']}/2 requests per minute."
-
+        # Acknowledge the request
         pr.create_issue_comment(
             f"🤖 **AI Review Started**\n\n"
             f"Review requested by @{comment_user} with options: {', '.join(options['lenses'])} lenses.\n\n"
-            f"⏳ Processing... This may take a few moments for large PRs.{rate_limit_msg}"
+            f"⏳ Processing... This may take a few moments for large PRs."
         )
 
         # Perform the review
