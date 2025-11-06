@@ -1,5 +1,5 @@
 import time, jwt, os, requests
-from backend.config import GITHUB_APP_ID, GITHUB_PRIVATE_KEY 
+from config import GITHUB_APP_ID, GITHUB_PRIVATE_KEY 
 
 APP_ID, PRIVATE_KEY = GITHUB_APP_ID, GITHUB_PRIVATE_KEY
 def build_app_jwt():
