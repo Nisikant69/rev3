@@ -5,6 +5,10 @@ file patterns, content analysis, and change characteristics.
 """
 
 import re
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from typing import List, Dict, Set, Any, Optional
 from backend.utils import detect_language_from_filename, extract_symbols_from_patch
 from backend.config import ENABLE_AUTO_LABELING
