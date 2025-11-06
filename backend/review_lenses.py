@@ -11,9 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import google.generativeai as genai
 from typing import List, Dict, Any, Optional
-from backend.utils import detect_language_from_filename
-from backend.config import GEMINI_API_KEY
-from backend.api_rate_limiter import execute_with_rate_limit
+from utils import detect_language_from_filename
+from config import GEMINI_API_KEY
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
