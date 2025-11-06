@@ -93,7 +93,7 @@ def validate_diff_position(position: int, hunks) -> bool:
     Returns:
         True if position is valid
     """
-    from backend.diff_parser import validate_diff_position
+    from diff_parser import validate_diff_position
     return validate_diff_position(position, hunks)
 
 
