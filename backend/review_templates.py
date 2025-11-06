@@ -11,7 +11,7 @@ from pathlib import Path
 import os
 import re
 
-from backend.config import DATA_DIR
+from config import DATA_DIR
 
 
 @dataclass

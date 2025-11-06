@@ -11,7 +11,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 import os
 
-from backend.config import DATA_DIR
+from config import DATA_DIR
 
 
 @dataclass

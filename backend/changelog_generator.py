@@ -6,7 +6,7 @@ conventional commit standards and categorized changes.
 
 import re
 from typing import List, Dict, Any, Optional
-from backend.utils import detect_language_from_filename, extract_symbols_from_patch
+from utils import detect_language_from_filename, extract_symbols_from_patch
 
 
 def generate_changelog(files: List[Any], pr_title: str, pr_description: str) -> Dict[str, Any]:
