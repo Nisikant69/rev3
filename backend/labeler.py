@@ -432,8 +432,25 @@ def apply_labels_to_pr(pr, labels: List[str], dry_run: bool = False) -> bool:
     if not labels:
         return True
 
+    # Clean labels to ensure they're all strings
+    clean_labels = []
+    for label in labels:
+        if isinstance(label, list):
+            # If it's a list, take the first item or skip
+            if label:
+                clean_labels.append(str(label[0]))
+        elif isinstance(label, str):
+            clean_labels.append(label)
+        else:
+            # Convert to string if it's not a list or string
+            clean_labels.append(str(label))
+
     if dry_run:
-        print(f"Would apply labels: {', '.join(labels)}")
+        try:
+            print(f"Would apply labels: {', '.join(clean_labels)}")
+        except Exception as e:
+            print(f"Error in dry run label joining: {e}")
+            print(f"Labels: {clean_labels}")
         return True
 
     try:
@@ -441,11 +458,15 @@ def apply_labels_to_pr(pr, labels: List[str], dry_run: bool = False) -> bool:
         existing_labels = [label.name for label in pr.get_labels()]
 
         # Only add new labels
-        new_labels = [label for label in labels if label not in existing_labels]
+        new_labels = [label for label in clean_labels if label not in existing_labels]
 
         if new_labels:
             pr.add_to_labels(new_labels)
-            print(f"✅ Applied labels: {', '.join(new_labels)}")
+            try:
+                print(f"✅ Applied labels: {', '.join(new_labels)}")
+            except Exception as e:
+                print(f"Error printing applied labels: {e}")
+                print(f"Labels: {new_labels}")
         else:
             print("ℹ️ No new labels to apply")
 
