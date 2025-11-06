@@ -1,4 +1,8 @@
 # main.py
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, Request, HTTPException
 import hmac, hashlib, os, json, traceback
 from github import Github, GithubException
@@ -13,6 +17,7 @@ from backend.review_lenses import multi_lens_review, get_available_lenses
 from backend.summarizer import generate_pr_summary, format_summary_for_comment
 from backend.labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
 from backend.api_rate_limiter import get_api_stats, set_api_rate_limits
+from backend.suggestions import generate_suggestions_for_file
 import re
 
 app = FastAPI()
