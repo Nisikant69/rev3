@@ -3,8 +3,8 @@ from typing import List, Dict, Any, Optional, Tuple
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import faiss
-from backend.config import TOP_K
-from backend.context_indexer import _get_model, load_dependency_graph, get_related_files
+from config import TOP_K
+from context_indexer import _get_model, load_dependency_graph, get_related_files
 
 
 def semantic_search(query: str, index: faiss.Index, metadata: List[dict],
