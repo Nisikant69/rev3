@@ -323,7 +323,7 @@ def review_patch(patch: str, filename: str, repo_full_name: str, ref: str, commi
     result = review_patch_line_level(patch, filename, repo_full_name, ref, commit_sha, index, metadata)
 
     # Convert to old format for backward compatibility
-    comments_text = "\n\n".join([f"Line {comment.get('line', '?')}: {comment['body']}"
+    comments_text = "\n\n".join([f"Line {comment.get('line', comment.get('position', '?'))}: {comment['body']}"
                                 for comment in result["comments"]])
 
     return {
