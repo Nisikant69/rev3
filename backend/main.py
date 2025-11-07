@@ -17,6 +17,7 @@ from review_lenses import multi_lens_review, get_available_lenses
 from summarizer import generate_pr_summary, format_summary_for_comment
 from labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
 from suggestions import generate_suggestions_for_file
+from analytics import analytics_engine
 import re
 
 app = FastAPI()
