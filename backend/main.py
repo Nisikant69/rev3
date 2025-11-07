@@ -397,12 +397,13 @@ async def github_webhook(request: Request):
                                 line_num = suggestion.get("line") or suggestion.get("position")
                                 if line_num:
                                     line_num = int(line_num) if isinstance(line_num, str) else line_num
-                                    all_review_comments.append({
+                                    comment_data = {
                                         "path": suggestion["path"],
                                         "body": f"💡 **Code Suggestion**\n\n{suggestion['body']}\n\n**Proposed Fix:**\n```suggestion\n{suggestion['suggestion']}\n```",
-                                        "line": line_num,
-                                        "position": None  # Use line instead of position
-                                    })
+                                        "line": line_num
+                                    }
+                                    # Don't include position field when using line
+                                    all_review_comments.append(comment_data)
 
                             summary_blocks.append(f"### 💡 Found {len(suggestion_result['github_suggestions'])} code suggestion{'s' if len(suggestion_result['github_suggestions']) != 1 else ''}")
 
