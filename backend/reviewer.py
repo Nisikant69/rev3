@@ -90,7 +90,7 @@ def review_single_patch(patch: str, filename: str, language: str, symbols: List[
             # Map each comment to a position in the diff
             mapped_comments = []
             for comment_text in ai_comments:
-                comment_pos = map_comment_to_position(comment_text, hunks, filename)
+                comment_pos = map_comment_to_diff_position(comment_text, hunks, filename)
                 if comment_pos:
                     # Create comment data - use position as primary, line as secondary
                     comment_data = {
