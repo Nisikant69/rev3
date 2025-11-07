@@ -199,12 +199,15 @@ def perform_enhanced_review(pr, repo, options: Dict[str, Any] = None):
                     # Convert lens comments to GitHub format
                     for comment in lens_result["all_comments"]:
                         if "line" in comment and comment["line"]:
-                            all_review_comments.append({
+                            # Ensure line is an integer, not a string
+                            line_num = int(comment["line"]) if isinstance(comment["line"], str) else comment["line"]
+                            comment_data = {
                                 "path": comment["path"],
                                 "body": comment["body"],
-                                "line": comment["line"],
-                                "position": None  # Use line instead of position
-                            })
+                                "line": line_num
+                            }
+                            # Don't include position field when using line
+                            all_review_comments.append(comment_data)
                         else:
                             # Add as summary comment if no line number
                             summary_blocks.append(f"### {lens_result.get('summary', 'Multi-lens analysis')}")
@@ -365,12 +368,15 @@ async def github_webhook(request: Request):
                             # Convert lens comments to GitHub format
                             for comment in lens_result["all_comments"]:
                                 if "line" in comment and comment["line"]:
-                                    all_review_comments.append({
+                                    # Ensure line is an integer, not a string
+                                    line_num = int(comment["line"]) if isinstance(comment["line"], str) else comment["line"]
+                                    comment_data = {
                                         "path": comment["path"],
                                         "body": comment["body"],
-                                        "line": comment["line"],
-                                        "position": None  # Use line instead of position
-                                    })
+                                        "line": line_num
+                                    }
+                                    # Don't include position field when using line
+                                    all_review_comments.append(comment_data)
                                 else:
                                     # Add as summary comment if no line number
                                     summary_blocks.append(f"### 🔍 {lens_result.get('summary', 'Multi-lens analysis')}")
@@ -387,11 +393,17 @@ async def github_webhook(request: Request):
                         if suggestion_result.get("github_suggestions"):
                             # Add suggestions as review comments
                             for suggestion in suggestion_result["github_suggestions"]:
-                                all_review_comments.append({
-                                    "path": suggestion["path"],
-                                    "body": f"💡 **Code Suggestion**\n\n{suggestion['body']}\n\n**Proposed Fix:**\n```suggestion\n{suggestion['suggestion']}\n```",
-                                    "line": suggestion.get("position")
-                                })
+                                # Get the line number and ensure it's an integer
+                                line_num = suggestion.get("line") or suggestion.get("position")
+                                if line_num:
+                                    line_num = int(line_num) if isinstance(line_num, str) else line_num
+                                    comment_data = {
+                                        "path": suggestion["path"],
+                                        "body": f"💡 **Code Suggestion**\n\n{suggestion['body']}\n\n**Proposed Fix:**\n```suggestion\n{suggestion['suggestion']}\n```",
+                                        "line": line_num
+                                    }
+                                    # Don't include position field when using line
+                                    all_review_comments.append(comment_data)
 
                             summary_blocks.append(f"### 💡 Found {len(suggestion_result['github_suggestions'])} code suggestion{'s' if len(suggestion_result['github_suggestions']) != 1 else ''}")
 

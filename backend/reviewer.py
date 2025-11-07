@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils import (
     trim_diff, extract_symbols_from_patch, detect_language_from_filename,
-    parse_diff_hunks, map_comment_to_position, format_ai_comments,
+    parse_diff_hunks, map_comment_to_position, map_comment_to_diff_position, format_ai_comments,
     enhance_trim_diff, estimate_tokens, should_chunk_file, chunk_code_by_functions
 )
 from semantic_search import semantic_search
@@ -90,16 +90,25 @@ def review_single_patch(patch: str, filename: str, language: str, symbols: List[
             # Map each comment to a position in the diff
             mapped_comments = []
             for comment_text in ai_comments:
-                comment_pos = map_comment_to_position(comment_text, hunks, filename)
+                comment_pos = map_comment_to_diff_position(comment_text, hunks, filename)
                 if comment_pos:
+                    # Create comment data - use position as primary, line as secondary
                     comment_data = {
                         "path": comment_pos.path,
                         "body": comment_pos.body,
                         "position": comment_pos.position
                     }
-                    # Only include line if it's a valid number
-                    if comment_pos.line is not None:
+
+                    # Only include line if it's a valid number AND position is None
+                    # GitHub API requires either position OR line, not both
+                    if comment_pos.line is not None and comment_pos.position is None:
                         comment_data["line"] = comment_pos.line
+                        # Remove position if we're using line instead
+                        del comment_data["position"]
+                    elif comment_pos.line is not None:
+                        # If we have both, prefer position and remove line
+                        del comment_data["line"]
+
                     mapped_comments.append(comment_data)
 
             return mapped_comments
@@ -138,16 +147,25 @@ def review_large_patch_in_chunks(patch: str, filename: str, language: str, symbo
 
                 # Map comments to positions in the original diff
                 for comment_text in ai_comments:
-                    comment_pos = map_comment_to_position(comment_text, hunks, filename)
+                    comment_pos = map_comment_to_diff_position(comment_text, hunks, filename)
                     if comment_pos:
+                        # Create comment data - use position as primary, line as secondary
                         comment_data = {
                             "path": comment_pos.path,
                             "body": comment_pos.body,
                             "position": comment_pos.position
                         }
-                        # Only include line if it's a valid number
-                        if comment_pos.line is not None:
+
+                        # Only include line if it's a valid number AND position is None
+                        # GitHub API requires either position OR line, not both
+                        if comment_pos.line is not None and comment_pos.position is None:
                             comment_data["line"] = comment_pos.line
+                            # Remove position if we're using line instead
+                            del comment_data["position"]
+                        elif comment_pos.line is not None:
+                            # If we have both, prefer position and remove line
+                            del comment_data["line"]
+
                         all_comments.append(comment_data)
         except Exception as e:
             print(f"Error reviewing chunk {i+1} for {filename}: {e}")

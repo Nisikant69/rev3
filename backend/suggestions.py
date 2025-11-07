@@ -134,11 +134,12 @@ Only provide actual improvements. If no suggestions are needed, respond with "No
                     suggestions.append(current_suggestion)
 
                 # Parse the new suggestion
-                line_num = line.split(":")[0].replace("Line ", "")
+                line_num_str = line.split(":")[0].replace("Line ", "")
+                line_num = int(line_num_str)  # Convert to integer immediately
                 issue_desc = line.split(" - ", 1)[-1] if " - " in line else line
 
                 current_suggestion = {
-                    "line": line_num,
+                    "line": line_num,  # Store as integer
                     "type": "suggestion",
                     "description": issue_desc,
                     "explanation": "",
