@@ -367,10 +367,12 @@ async def github_webhook(request: Request):
                             # Convert lens comments to GitHub format
                             for comment in lens_result["all_comments"]:
                                 if "line" in comment and comment["line"]:
+                                    # Ensure line is an integer, not a string
+                                    line_num = int(comment["line"]) if isinstance(comment["line"], str) else comment["line"]
                                     all_review_comments.append({
                                         "path": comment["path"],
                                         "body": comment["body"],
-                                        "line": comment["line"],
+                                        "line": line_num,
                                         "position": None  # Use line instead of position
                                     })
                                 else:
