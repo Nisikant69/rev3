@@ -377,6 +377,14 @@ async def serve_dashboard():
     from fastapi.responses import FileResponse
     return FileResponse("dashboard.html")
 
+@app.get("/favicon.ico")
+async def favicon():
+    """Serve a simple favicon to prevent 404 errors."""
+    from fastapi.responses import Response
+    # Return a simple 16x16 pixel favicon (SVG format as base64)
+    favicon_data = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iNCIgZmlsbD0iIzY2N2VlYSIvPgo8cGF0aCBkPSJNOCAyTDYgNkgxMEw4IDJaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNOCAxNEw2IDEwSDEwTDggMTRaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+    return Response(content=favicon_data, media_type="image/x-icon")
+
 @app.post("/api/webhook")
 async def github_webhook(request: Request):
     # --- Signature verification ---
