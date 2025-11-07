@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils import (
     trim_diff, extract_symbols_from_patch, detect_language_from_filename,
-    parse_diff_hunks, map_comment_to_position, format_ai_comments,
+    parse_diff_hunks, map_comment_to_position, map_comment_to_diff_position, format_ai_comments,
     enhance_trim_diff, estimate_tokens, should_chunk_file, chunk_code_by_functions
 )
 from semantic_search import semantic_search
