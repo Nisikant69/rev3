@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Review Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-change {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e1e5e9;
+        }
+
+        .chart-container h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .chart-canvas {
+            position: relative;
+            height: 300px;
+        }
+
+        .recent-reviews {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e1e5e9;
+        }
+
+        .recent-reviews h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .review-item {
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+            transition: background 0.3s ease;
+        }
+
+        .review-item:hover {
+            background: #e9ecef;
+        }
+
+        .review-pr {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .review-details {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #7f8c8d;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .time-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .time-btn {
+            background: #ecf0f1;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .time-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .time-btn:hover:not(.active) {
+            background: #d5dbdd;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>🤖 AI Code Review Analytics</h1>
+            <p class="subtitle">Real-time insights into your code review performance</p>
+            <div class="time-filter">
+                <button class="time-btn" onclick="loadData(7)">7 Days</button>
+                <button class="time-btn active" onclick="loadData(30)">30 Days</button>
+                <button class="time-btn" onclick="loadData(90)">90 Days</button>
+                <button class="time-btn" onclick="loadData(365)">1 Year</button>
+            </div>
+        </header>
+
+        <div id="loading" class="loading">Loading dashboard data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="dashboard-content" style="display: none;">
+            <!-- Key Metrics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total PRs Reviewed</h3>
+                    <div class="stat-value" id="total-prs">-</div>
+                    <div class="stat-change" id="prs-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Average Review Time</h3>
+                    <div class="stat-value" id="avg-review-time">-</div>
+                    <div class="stat-change" id="time-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Issues Detected</h3>
+                    <div class="stat-value" id="total-issues">-</div>
+                    <div class="stat-change" id="issues-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Quality Score</h3>
+                    <div class="stat-value" id="quality-score">-</div>
+                    <div class="stat-change" id="quality-change">-</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>📈 Review Trends</h3>
+                    <div class="chart-canvas">
+                        <canvas id="reviewTrendsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>🔍 Issue Types Distribution</h3>
+                    <div class="chart-canvas">
+                        <canvas id="issueTypesChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>⚡ Processing Performance</h3>
+                    <div class="chart-canvas">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>👥 Team Productivity</h3>
+                    <div class="chart-canvas">
+                        <canvas id="productivityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Reviews -->
+            <div class="recent-reviews">
+                <h3>📝 Recent Reviews</h3>
+                <div id="recent-reviews-list">
+                    <div class="loading">Loading recent reviews...</div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="refresh-btn" onclick="loadData(currentTimeRange)">
+                    🔄 Refresh Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTimeRange = 30;
+        let charts = {};
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData(currentTimeRange);
+
+            // Auto-refresh every 5 minutes
+            setInterval(() => {
+                loadData(currentTimeRange);
+            }, 300000);
+        });
+
+        async function loadData(days) {
+            currentTimeRange = days;
+
+            // Update active button
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'none';
+
+                // Fetch analytics data
+                const response = await fetch(`/api/analytics?days=${days}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Update dashboard
+                updateMetrics(data.metrics);
+                updateCharts(data.charts);
+                updateRecentReviews(data.recent_reviews);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = `Error loading data: ${error.message}`;
+            }
+        }
+
+        function updateMetrics(metrics) {
+            // Update stat cards with animation
+            animateValue('total-prs', metrics.total_prs_reviewed || 0);
+            animateValue('avg-review-time', metrics.average_review_time ? metrics.average_review_time.toFixed(1) : 0, 's');
+            animateValue('total-issues', metrics.total_issues_detected || 0);
+            animateValue('quality-score', metrics.average_quality_score ? (metrics.average_quality_score * 100).toFixed(0) : 0, '%');
+
+            // Update change indicators
+            updateChangeIndicator('prs-change', metrics.prs_trend);
+            updateChangeIndicator('time-change', metrics.review_time_trend);
+            updateChangeIndicator('issues-change', metrics.issues_trend);
+            updateChangeIndicator('quality-change', metrics.quality_trend);
+        }
+
+        function animateValue(id, value, suffix = '') {
+            const element = document.getElementById(id);
+            const start = parseInt(element.textContent) || 0;
+            const end = typeof value === 'string' ? parseFloat(value) : value;
+            const duration = 1000;
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const current = start + (end - start) * progress;
+
+                element.textContent = Math.round(current) + suffix;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        function updateChangeIndicator(id, trend) {
+            const element = document.getElementById(id);
+            if (!trend) {
+                element.textContent = 'No data';
+                return;
+            }
+
+            const isPositive = trend > 0;
+            const arrow = isPositive ? '↑' : '↓';
+            const color = isPositive ? '#4CAF50' : '#e74c3c';
+            const text = `${arrow} ${Math.abs(trend).toFixed(1)}%`;
+
+            element.innerHTML = `<span style="color: ${color}">${text}</span>`;
+        }
+
+        function updateCharts(chartData) {
+            // Review Trends Chart
+            if (charts.reviewTrends) charts.reviewTrends.destroy();
+            const reviewTrendsCtx = document.getElementById('reviewTrendsChart').getContext('2d');
+            charts.reviewTrends = new Chart(reviewTrendsCtx, {
+                type: 'line',
+                data: {
+                    labels: chartData.review_trends?.labels || [],
+                    datasets: [{
+                        label: 'PRs Reviewed',
+                        data: chartData.review_trends?.prs || [],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Issues Found',
+                        data: chartData.review_trends?.issues || [],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+
+            // Issue Types Chart
+            if (charts.issueTypes) charts.issueTypes.destroy();
+            const issueTypesCtx = document.getElementById('issueTypesChart').getContext('2d');
+            charts.issueTypes = new Chart(issueTypesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Security', 'Performance', 'Best Practices', 'Code Style'],
+                    datasets: [{
+                        data: chartData.issue_types || [0, 0, 0, 0],
+                        backgroundColor: ['#e74c3c', '#f39c12', '#3498db', '#9b59b6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Performance Chart
+            if (charts.performance) charts.performance.destroy();
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            charts.performance = new Chart(performanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.performance?.labels || [],
+                    datasets: [{
+                        label: 'Processing Time (s)',
+                        data: chartData.performance?.times || [],
+                        backgroundColor: 'rgba(46, 204, 113, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Productivity Chart
+            if (charts.productivity) charts.productivity.destroy();
+            const productivityCtx = document.getElementById('productivityChart').getContext('2d');
+            charts.productivity = new Chart(productivityCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Review Speed', 'Accuracy', 'Coverage', 'Consistency', 'Quality'],
+                    datasets: [{
+                        label: 'Team Performance',
+                        data: chartData.productivity || [0, 0, 0, 0, 0],
+                        borderColor: '#8e44ad',
+                        backgroundColor: 'rgba(142, 68, 173, 0.2)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: { beginAtZero: true, max: 100 }
+                    }
+                }
+            });
+        }
+
+        function updateRecentReviews(reviews) {
+            const container = document.getElementById('recent-reviews-list');
+
+            if (!reviews || reviews.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #7f8c8d;">No recent reviews found</p>';
+                return;
+            }
+
+            container.innerHTML = reviews.map(review => `
+                <div class="review-item">
+                    <div class="review-pr">PR #${review.pr_number} - ${review.repo_name}</div>
+                    <div class="review-details">
+                        ${review.comments_posted} comments • ${review.files_changed} files •
+                        Quality score: ${(review.review_quality_score * 100).toFixed(0)}% •
+                        ${new Date(review.timestamp).toLocaleDateString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

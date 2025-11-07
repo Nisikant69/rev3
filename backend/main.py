@@ -17,6 +17,7 @@ from review_lenses import multi_lens_review, get_available_lenses
 from summarizer import generate_pr_summary, format_summary_for_comment
 from labeler import generate_pr_labels, apply_labels_to_pr, create_missing_labels
 from suggestions import generate_suggestions_for_file
+from analytics import analytics_engine
 import re
 
 app = FastAPI()
@@ -283,6 +284,98 @@ def perform_enhanced_review(pr, repo, options: Dict[str, Any] = None):
     except Exception as e:
         print(f"🔥 Error in enhanced review: {e}")
         raise
+
+@app.get("/api/analytics")
+async def get_analytics(days: int = 30):
+    """Get analytics data for the dashboard."""
+    try:
+        # Get team metrics
+        team_metrics = analytics_engine.get_team_metrics("Nisikant69/reviewer", days)
+
+        # Get recent reviews
+        recent_reviews = analytics_engine.get_recent_reviews("Nisikant69/reviewer", limit=10)
+
+        # Generate analytics report
+        report = analytics_engine.generate_analytics_report("Nisikant69/reviewer", days)
+
+        # Prepare chart data
+        chart_data = {
+            "review_trends": {
+                "labels": report.get("daily_stats", {}).keys()[-7:],  # Last 7 days
+                "prs": list(report.get("daily_stats", {}).values())[-7:],
+                "issues": list(report.get("daily_issues", {}).values())[-7:]
+            },
+            "issue_types": [
+                report.get("security_issues", 0),
+                report.get("performance_issues", 0),
+                report.get("best_practice_issues", 0),
+                report.get("style_issues", 0)
+            ],
+            "performance": {
+                "labels": [f"Day {i+1}" for i in range(min(7, len(recent_reviews)))],
+                "times": [r.processing_time_seconds for r in recent_reviews[:7]]
+            },
+            "productivity": [
+                min(100, team_metrics.team_productivity_score * 20),  # Scale to 0-100
+                min(100, team_metrics.review_consistency_score * 20),
+                min(100, team_metrics.security_detection_rate * 100),
+                min(100, team_metrics.performance_detection_rate * 100),
+                min(100, team_metrics.code_quality_trend * 100)
+            ]
+        }
+
+        return {
+            "metrics": {
+                "total_prs_reviewed": team_metrics.total_prs_reviewed,
+                "average_review_time": team_metrics.average_review_time,
+                "total_issues_detected": team_metrics.total_prs_reviewed * team_metrics.average_issues_per_pr,
+                "average_quality_score": team_metrics.review_consistency_score / 5,  # Normalize
+                "prs_trend": 5.2,  # Mock trend data
+                "review_time_trend": -2.1,
+                "issues_trend": 8.7,
+                "quality_trend": 3.4
+            },
+            "charts": chart_data,
+            "recent_reviews": [
+                {
+                    "pr_number": r.pr_number,
+                    "repo_name": r.repo_name,
+                    "timestamp": r.timestamp.isoformat(),
+                    "comments_posted": r.comments_posted,
+                    "files_changed": r.files_changed,
+                    "review_quality_score": r.review_quality_score
+                }
+                for r in recent_reviews
+            ]
+        }
+
+    except Exception as e:
+        print(f"Error fetching analytics: {e}")
+        return {
+            "metrics": {
+                "total_prs_reviewed": 0,
+                "average_review_time": 0,
+                "total_issues_detected": 0,
+                "average_quality_score": 0,
+                "prs_trend": 0,
+                "review_time_trend": 0,
+                "issues_trend": 0,
+                "quality_trend": 0
+            },
+            "charts": {
+                "review_trends": {"labels": [], "prs": [], "issues": []},
+                "issue_types": [0, 0, 0, 0],
+                "performance": {"labels": [], "times": []},
+                "productivity": [0, 0, 0, 0, 0]
+            },
+            "recent_reviews": []
+        }
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    """Serve the analytics dashboard."""
+    from fastapi.responses import FileResponse
+    return FileResponse("dashboard.html")
 
 @app.post("/api/webhook")
 async def github_webhook(request: Request):
