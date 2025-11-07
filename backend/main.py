@@ -201,12 +201,13 @@ def perform_enhanced_review(pr, repo, options: Dict[str, Any] = None):
                         if "line" in comment and comment["line"]:
                             # Ensure line is an integer, not a string
                             line_num = int(comment["line"]) if isinstance(comment["line"], str) else comment["line"]
-                            all_review_comments.append({
+                            comment_data = {
                                 "path": comment["path"],
                                 "body": comment["body"],
-                                "line": line_num,
-                                "position": None  # Use line instead of position
-                            })
+                                "line": line_num
+                            }
+                            # Don't include position field when using line
+                            all_review_comments.append(comment_data)
                         else:
                             # Add as summary comment if no line number
                             summary_blocks.append(f"### {lens_result.get('summary', 'Multi-lens analysis')}")
