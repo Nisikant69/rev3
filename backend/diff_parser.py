@@ -130,7 +130,8 @@ def map_comment_to_diff_position(comment: str, hunks: List[DiffHunk],
                 return CommentPosition(
                     path=filename,
                     body=comment,
-                    position=position
+                    position=position,
+                    line=line_num  # Also set the line number for clarity
                 )
 
     # Fallback: place comment at the first relevant hunk
@@ -145,18 +146,82 @@ def map_comment_to_diff_position(comment: str, hunks: List[DiffHunk],
                     position += len(prev_hunk.lines) + 1  # +1 for header
                 position += 1  # +1 for this hunk's header
 
-                return CommentPosition(
-                    path=filename,
-                    body=comment,
-                    position=position
-                )
+                # Find the line number in the new file for this position
+                new_line = find_line_for_position(position, hunks)
+                if new_line:
+                    return CommentPosition(
+                        path=filename,
+                        body=comment,
+                        position=position,
+                        line=new_line
+                    )
+                else:
+                    # If we can't find the exact line, just use position
+                    return CommentPosition(
+                        path=filename,
+                        body=comment,
+                        position=position,
+                        line=None  # Line will be omitted
+                    )
 
         # If no additions found, use the first hunk
         return CommentPosition(
             path=filename,
             body=comment,
-            position=1  # First line of first hunk
+            position=1,
+            line=hunks[0].new_start if hunks else 1
         )
+
+    return None
+
+
+def find_line_for_position(position: int, hunks: List[DiffHunk]) -> Optional[int]:
+    """
+    Find the line number in the new file for a given diff position.
+
+    Args:
+        position: The diff position (1-based)
+        hunks: List of DiffHunk objects
+
+    Returns:
+        Line number in the new file, or None if not found
+    """
+    current_new_line = 1
+    diff_position = 1  # Start after first hunk header
+
+    for hunk in hunks:
+        diff_position += 1  # Account for hunk header
+
+        # Skip to the start of this hunk in the new file
+        while current_new_line < hunk.new_start:
+            current_new_line += 1
+            diff_position += 1
+
+        # Check if the target position is within this hunk's range
+        hunk_start_position = diff_position
+        hunk_end_position = diff_position + len(hunk.lines) - 1
+
+        if hunk_start_position <= position <= hunk_end_position:
+            # Calculate the line offset within this hunk
+            position_offset = position - hunk_start_position
+
+            # Count new file lines until we reach the target position
+            for line in hunk.lines:
+                if line.startswith('+') and not line.startswith('++'):
+                    if position_offset == 0:
+                        return current_new_line
+                    current_new_line += 1
+                    position_offset -= 1
+                elif line.startswith('-'):
+                    # Skip deleted lines for position counting
+                    continue
+                else:
+                    # Context lines
+                    current_new_line += 1
+                    position_offset -= 1
+
+        # Skip to the end of this hunk
+        diff_position += len(hunk.lines)
 
     return None
 
